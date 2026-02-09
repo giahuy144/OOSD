@@ -12,4 +12,18 @@ public class ResultResponse implements Serializable {
         this.diceResult = diceResult;
         this.winMoney = winMoney;
     }
+
+    public List<Animal> getDiceResult() {
+        return diceResult;
+    }
+
+    public int getWinMoney() {
+        return winMoney;
+    }
+
+    @Override
+    public String toString() {
+        return "Xúc xắc: " + diceResult +
+                " | Tiền thắng: " + winMoney;
+    }
 }

@@ -5,6 +5,8 @@ import java.util.Map;
 
 public class BetRequest implements Serializable {
     private Map<Animal, Integer> bets;
+//    Object client gửi lên server
+//    Chứa các cược
 
     public BetRequest(Map<Animal, Integer> bets) {
         this.bets = bets;

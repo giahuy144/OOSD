@@ -6,30 +6,63 @@ import main.java.com.giahuy.oosd.baucua.common.Animal;
 import main.java.com.giahuy.oosd.baucua.common.BetRequest;
 import main.java.com.giahuy.oosd.baucua.common.ResultResponse;
 
-import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
-import static main.java.com.giahuy.oosd.baucua.server.GameLogic.calculate;
-import static main.java.com.giahuy.oosd.baucua.server.GameLogic.rollDice;
+import java.util.Map;
+
 
 public class BaucuaServer extends AbstractServer {
 
+    private Map<ConnectionToClient, BetRequest> bets = new HashMap<>();
+//Mỗi client
+//Cược của client trong 1 lượt
     public BaucuaServer(int port) {
         super(port);
+        startGameLoop();
     }
 
     @Override
-    protected void handleMessageFromClient(Object msg, ConnectionToClient client) {
+    protected  synchronized void handleMessageFromClient(
+            Object msg, ConnectionToClient client) {
+//gọi hàm này khi client gửi object
         if (msg instanceof BetRequest) {
-            BetRequest req = (BetRequest) msg;
-
-            List<Animal> result = rollDice();
-            int win = calculate(req.getBets(), result);
-
-            try {
-                client.sendToClient(new ResultResponse(result, win));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            bets.put(client, (BetRequest) msg);
+//Lưu cược của client
+//Client không gửi → không có trong map → bỏ lượt
         }
+    }
+
+    private void startGameLoop () {
+        new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(10000);
+                    //10 giây (1 lượt chơi)
+                    List<Animal> dice = GameLogic.rollDice();
+                    //Server tung xúc xắc 1 lần cho tất cả
+                    for (Thread t : getClientConnections()) {
+                        //Duyệt toàn bộ client
+                        ConnectionToClient client = (ConnectionToClient) t;
+
+                        BetRequest bet = bets.get(client);
+                        int win = 0;
+                        //Có cược → tính
+                        //Không cược → win = 0
+                        if (bet != null) {
+                            win = GameLogic.calculate(bet.getBets(), dice);
+                        }
+
+                        client.sendToClient(
+                                new ResultResponse(dice, win)
+                        );
+                    }
+                    bets.clear();
+                        //Xoá cược -> chuẩn bị lượt mới
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+
     }
 }
